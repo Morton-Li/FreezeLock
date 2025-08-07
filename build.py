@@ -35,6 +35,7 @@ def build():
         '--output-filename=FreezeLock',
         '--no-pyi-file',
         '--no-pyi-stubs',
+        '--assume-yes-for-downloads',
         '--windows-console-mode=disable',
         r'--windows-icon-from-ico=app\assets\freezelock.ico',
         '--windows-uac-admin',
