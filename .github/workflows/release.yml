@@ -62,8 +62,8 @@ jobs:
         if: steps.check_tag.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
+          name: "FreezeLock ${{ github.ref_name }} Release"
           tag_name: ${{ github.ref_name }}
-          release_name: "FreezeLock ${{ github.ref_name }} Release"
           files: FreezeLock-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
