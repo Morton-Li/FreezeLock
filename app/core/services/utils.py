@@ -1,6 +1,8 @@
+import os
 from typing import Optional
 
 import pywintypes
+import win32api
 
 from . import uwf_classes, get_wmi_client
 from ..errors.hresult import HRESULT
@@ -92,6 +94,23 @@ def format_com_error(e: pywintypes.com_error) -> str:
     return f'{hresult.describe()} (HRESULT: {hresult.hex()})'
 
 
+def get_filter_instance() -> Optional[WMIObject]:
+    """
+    获取 UWF 过滤器实例
+    :return: UWF 过滤器实例或 None
+    """
+    try:
+        instances = get_service_instance(instance_name='UWF_Filter')
+        return instances[0]
+    except pywintypes.com_error as e:
+        print(f'[!] Querying UWF filter failed: {format_com_error(e=e)}')
+    except IndexError:
+        print('[!] No UWF filter instance found')
+    except Exception as e:
+        print(f'[!] An unexpected error occurred: {e}')
+    return None
+
+
 def get_volume_instance(drive: str, current_session: bool = False) -> Optional[WMIObject]:
     """
     获取指定盘符的 UWF 卷实例
@@ -112,3 +131,32 @@ def get_volume_instance(drive: str, current_session: bool = False) -> Optional[W
     except Exception as e:
         print(f'[!] An unexpected error occurred: {e}')
     return None
+
+
+def get_overlay_config_instance(current_session: bool = False) -> Optional[WMIObject]:
+    """
+    Get the UWF OverlayConfig instance.
+    :return: WMIObject representing the UWF OverlayConfig instance.
+    """
+    try:
+        instances = query_service_instance(
+            class_name='UWF_OverlayConfig', query=f'SELECT * FROM UWF_OverlayConfig WHERE CurrentSession={str(current_session)}'
+        )
+        return instances[0]
+    except pywintypes.com_error as e:
+        print(f'[!] Querying UWF OverlayConfig failed: {format_com_error(e=e)}')
+    except IndexError:
+        print('[!] No UWF OverlayConfig instance found')
+    except Exception as e:
+        print(f'[!] An unexpected error occurred: {e}')
+    return None
+
+
+def get_system_volume()  -> str:
+    """
+    获取系统盘符
+    :return: 系统盘符，例如 "C:"
+    """
+    system_dir = win32api.GetSystemDirectory()
+    drive, _ = os.path.splitdrive(system_dir)
+    return drive
