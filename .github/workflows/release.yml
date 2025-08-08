@@ -1,10 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "v*.*.*"  # Match semantic versioning tags like v1.0.0, v2.3.4, etc.
+      - "v*.*.*"
 
 jobs:
   build:
@@ -26,6 +25,8 @@ jobs:
       - name: Build package
         run: |
           venv\Scripts\python build.py
+        env:
+          PYTHONIOENCODING: utf-8
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -37,19 +38,32 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
+      - name: Check tag name
+        id: check_tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "skip=false" >> $GITHUB_ENV
+          else
+            echo "skip=true" >> $GITHUB_ENV
+          fi
+
       - name: Download artifacts
+        if: steps.check_tag.outputs.skip != 'true'
         uses: actions/download-artifact@v4
         with:
-          path: FreezeLock
-      
+          path: .
+
       - name: Compress release files
-        run: zip -r FreezeLock-v${{ github.ref_name }}.zip FreezeLock/
+        if: steps.check_tag.outputs.skip != 'true'
+        run: zip -r FreezeLock-${{ github.ref_name }}.zip FreezeLock/
 
       - name: Create release and upload artifacts
+        if: steps.check_tag.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
+          name: "FreezeLock ${{ github.ref_name }} Release"
           tag_name: ${{ github.ref_name }}
-          release_name: "FreezeLock v${{ github.ref_name }} Release"
-          files: FreezeLock-v${{ github.ref_name }}.zip
+          files: FreezeLock-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
