@@ -8,7 +8,7 @@ from .base import BaseMainWindow
 from .pages import AboutPage, FreezePage, StatusPage
 from .pages.settings_page import SettingsPage
 from ..core.services import is_uwf_installed
-from ..core.services.utils import get_service_instance
+from ..core.services.filter import current_enabled, next_enabled
 
 
 class MainWindow(BaseMainWindow):
@@ -144,25 +144,20 @@ class MainWindow(BaseMainWindow):
             self.uwf_status_value.setText('Service Not Installed')
             self.uwf_status_value.setStyleSheet('color: red; font-weight: bold;')
         else:
-            uwf_filter_instance = get_service_instance(instance_name='UWF_Filter')[0].as_dict()
-            if uwf_filter_instance:
-                if uwf_filter_instance['CurrentEnabled']:
-                    if uwf_filter_instance['NextEnabled']:
-                        self.uwf_status_value.setText('Enabled')
-                        self.uwf_status_value.setStyleSheet('color: green; font-weight: bold;')
-                    else:
-                        self.uwf_status_value.setText('Enabled (will be disabled after reboot)')
-                        self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
+            if current_enabled():
+                if next_enabled():
+                    self.uwf_status_value.setText('Enabled')
+                    self.uwf_status_value.setStyleSheet('color: green; font-weight: bold;')
                 else:
-                    if uwf_filter_instance['NextEnabled']:
-                        self.uwf_status_value.setText('Disabled (will be enabled after reboot)')
-                        self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
-                    else:
-                        self.uwf_status_value.setText('Disabled')
-                        self.uwf_status_value.setStyleSheet('color: red; font-weight: bold;')
+                    self.uwf_status_value.setText('Enabled (will be disabled after reboot)')
+                    self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
             else:
-                self.uwf_status_value.setText('Could not retrieve status')
-                self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
+                if next_enabled():
+                    self.uwf_status_value.setText('Disabled (will be enabled after reboot)')
+                    self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
+                else:
+                    self.uwf_status_value.setText('Disabled')
+                    self.uwf_status_value.setStyleSheet('color: red; font-weight: bold;')
 
     def _on_page_changed(self, index: int):
         """

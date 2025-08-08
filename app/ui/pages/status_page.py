@@ -3,17 +3,19 @@ import time
 from typing import Optional
 
 from PySide6.QtCore import Qt, QEventLoop
-from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QProgressBar, QPushButton
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QProgressBar, QPushButton
 
-from ..base import BasePage
+from ..base import BasePage, BaseMainWindow
 from ..widgets.dialog import InstallUWFServiceDialog, RebootDialog
 from ...core.services import refresh_wmi_client, is_uwf_installed
+from ...core.services.filter import current_enabled, next_enabled
+from ...core.services.overlay_config import get_type
 from ...core.services.utils import get_service_instance
 from ...worker.uwf import InstallUWFServiceWorker
 
 
 class StatusPage(BasePage):
-    def __init__(self, parent: QMainWindow):
+    def __init__(self, parent: BaseMainWindow):
         super().__init__(parent=parent)
 
         self.install_service_worker: Optional[InstallUWFServiceWorker] = None
@@ -30,7 +32,7 @@ class StatusPage(BasePage):
         status_layout.setSpacing(10)
         status_layout.addWidget(QLabel("●"))
         status_layout.addWidget(status_label)
-        status_layout.addWidget(self.status_value, stretch=1, alignment=Qt.AlignmentFlag.AlignLeft)
+        status_layout.addWidget(self.status_value)
         status_layout.addStretch()
         # 安装按钮
         self.install_button = QPushButton("安装 UWF 服务")
@@ -133,52 +135,26 @@ class StatusPage(BasePage):
             self.status_value.setText("未安装 UWF 服务")
             self.cache_mode_value.setText("N/A")
             self.usage_bar.setValue(0)
-            self.usage_bar.setToolTip(f'UWF 服务不可用')
             self.install_button.show()
             return
 
-        # 获取UWF服务状态
-        uwf_filter_instance = get_service_instance(instance_name='UWF_Filter')[0].as_dict()
-        if not uwf_filter_instance:
-            self.status_value.setText("服务不可用")
-            self.cache_mode_value.setText("N/A")
-            self.usage_bar.setValue(0)
-            self.usage_bar.setToolTip(f'UWF 服务不可用')
-            return
-
-        # 更新状态信息
-        # {'CurrentEnabled': False, 'HORMEnabled': False, 'Id': 'UWF_Filter', 'NextEnabled': False, 'ShutdownPending': False}
-        if uwf_filter_instance['CurrentEnabled']:
-            service_status_message = '已启用'
-            self.status_value.setStyleSheet('color: green; font-size: 15px;')
-            if not uwf_filter_instance['NextEnabled']:
-                service_status_message += ' (重新启动后将禁用)'
-                self.status_value.setStyleSheet('color: orange; font-size: 15px;')
-        else:
-            service_status_message = '已禁用'
-            self.status_value.setStyleSheet('color: red; font-size: 15px;')
-            if uwf_filter_instance['NextEnabled']:
-                service_status_message += ' (重新启动后将启用)'
-                self.status_value.setStyleSheet('color: orange; font-size: 15px;')
-        self.status_value.setText(service_status_message)
-
-        # 获取缓存模式
-        uwf_overlay_config_instance = get_service_instance(instance_name='UWF_OverlayConfig')[0].as_dict()
-        if uwf_overlay_config_instance:
-            # {'CurrentSession': False, 'MaximumSize': 1024, 'Type': 0}
-            mode = uwf_overlay_config_instance['Type']
-            if mode is not None:
-                mode_mapping = {
-                    0: "Disk",
-                    1: "RAM",
-                    2: "RAM + Disk"
-                }
-                # 更新缓存模式显示
-                self.cache_mode_value.setText(mode_mapping.get(mode, "未知模式"))
+        if current_enabled():
+            if next_enabled():
+                self.status_value.setText('Enabled')
+                self.status_value.setStyleSheet('color: green; font-weight: bold; font-size: 15px;')
             else:
-                self.cache_mode_value.setText("无法获取模式")
+                self.status_value.setText('Enabled (will be disabled after reboot)')
+                self.status_value.setStyleSheet('color: orange; font-weight: bold; font-size: 15px;')
         else:
-            self.cache_mode_value.setText("N/A")
+            if next_enabled():
+                self.status_value.setText('Disabled (will be enabled after reboot)')
+                self.status_value.setStyleSheet('color: orange; font-weight: bold; font-size: 15px;')
+            else:
+                self.status_value.setText('Disabled')
+                self.status_value.setStyleSheet('color: red; font-weight: bold; font-size: 15px;')
+
+        # 更新缓存模式显示
+        self.cache_mode_value.setText(get_type())
 
         # 获取缓存使用情况
         uwf_overly_instance = get_service_instance(instance_name='UWF_Overlay')[0].as_dict()

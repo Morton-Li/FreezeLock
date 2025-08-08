@@ -95,3 +95,28 @@ class UWFFilter(BaseUWFService):
         except pywintypes.com_error as e:
             print(f'[!] Restarting system failed: {format_com_error(e=e)}')
         return False
+
+
+def current_enabled() -> bool:
+    """
+    Check if the UWF filter is currently enabled.
+    :return: True if the UWF filter is currently enabled, False otherwise.
+    """
+    try:
+        instance = get_service_instance(instance_name='UWF_Filter')[0]
+        return instance['CurrentEnabled']
+    except pywintypes.com_error as e:
+        print(f'[!] Checking current UWF filter status failed: {format_com_error(e=e)}')
+    return False
+
+def next_enabled() -> bool:
+    """
+    Check if the UWF filter will be enabled on the next boot.
+    :return: True if the UWF filter will be enabled on the next boot, False otherwise.
+    """
+    try:
+        instance = get_service_instance(instance_name='UWF_Filter')[0]
+        return instance['NextEnabled']
+    except pywintypes.com_error as e:
+        print(f'[!] Checking next UWF filter status failed: {format_com_error(e=e)}')
+    return False
