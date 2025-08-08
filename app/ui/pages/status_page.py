@@ -5,7 +5,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, QEventLoop
 from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QProgressBar, QPushButton
 
-from .base import BasePage
+from ..base import BasePage
 from ..widgets.dialog import InstallUWFServiceDialog, RebootDialog
 from ...core.services import refresh_wmi_client, is_uwf_installed
 from ...core.services.utils import get_service_instance

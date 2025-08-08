@@ -1,31 +1,29 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QListWidget, QListWidgetItem, QStackedWidget,
-    QStatusBar
+    QHBoxLayout, QListWidget, QListWidgetItem, QStackedWidget, QLabel
 )
-from win32com import client
 
+from .base import BaseMainWindow
 from .pages import AboutPage, FreezePage, StatusPage
-from ..core.services import get_wmi_client, is_uwf_installed
+from .pages.settings_page import SettingsPage
+from ..core.services import is_uwf_installed
 from ..core.services.utils import get_service_instance
 
 
-class MainWindow(QMainWindow):
+class MainWindow(BaseMainWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle('FreezeLock')
-        self.setFixedSize(960, 520)
-
-        self.main_widget: QWidget  # 主容器
-        self.main_layout: QHBoxLayout  # 主布局
-        self.pages: list[tuple[str, callable]]  # 页面列表，包含页面名称和图标路径
+        super().__init__(
+            title='FreezeLock',
+            size=(960, 520)
+        )
         self.sidebar: QListWidget  # 左侧导航栏
         self.stack: QStackedWidget  # 右侧页面堆叠
 
-        self.wmi_client: client.CDispatch  # WMI 客户端对象
+        self.pages: list[tuple[str, callable]]  # 页面列表，包含页面名称和图标路径
 
-        self._init_features()
+        self.uwf_status_value: QLabel
+
         self._init_ui()
 
     def _init_ui(self):
@@ -33,16 +31,15 @@ class MainWindow(QMainWindow):
         Initialize the UI components.
         :return:
         """
-        # 主容器（中央控件）
-        self.main_widget = QWidget()
-        self.main_layout = QHBoxLayout(self.main_widget)
-        self.main_widget.setLayout(self.main_layout)
-        self.setCentralWidget(self.main_widget)
+        # 内容
+        self.content_layout = QHBoxLayout()
+        self.content_wrapper.setLayout(self.content_layout)
 
         # 初始化页面列表
         self.pages = [
             ("状态", StatusPage(parent=self)),
             ("冻结", FreezePage(parent=self)),
+            ("设置", SettingsPage(parent=self)),
             ("关于", AboutPage()),
         ]
 
@@ -50,7 +47,7 @@ class MainWindow(QMainWindow):
         self._init_sidebar()
         # 初始化右侧堆叠页面
         self._init_stacked_pages()
-        # 初始化状态栏
+        # Initialize status bar
         self._init_status_bar()
 
     def _init_sidebar(self):
@@ -101,7 +98,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setCurrentRow(0)
 
         # 向主布局添加侧边栏
-        self.main_layout.addWidget(self.sidebar)
+        self.content_layout.addWidget(self.sidebar)
 
     def _init_stacked_pages(self):
         """
@@ -124,43 +121,48 @@ class MainWindow(QMainWindow):
         self.sidebar.currentRowChanged.connect(self._on_page_changed)
 
         # 向主布局添加堆叠页面
-        self.main_layout.addWidget(self.stack)
+        self.content_layout.addWidget(self.stack)
 
     def _init_status_bar(self):
         """
         Initialize the status bar.
         :return:
         """
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.refresh_status_bar()
+        uwf_status_layout = QHBoxLayout()
+        uwf_status_label = QLabel("UWF Status: ")
+        self.uwf_status_value = QLabel('Unknown')
+        uwf_status_layout.addWidget(uwf_status_label)
+        uwf_status_layout.addWidget(self.uwf_status_value)
+        uwf_status_layout.setSpacing(2)
+        self.status_bar.add_layout(name='uwf_status', layout=uwf_status_layout, stretch=-1)
 
-    def _init_features(self):
-        """
-        Initialize features of the application.
-        :return:
-        """
-        self.wmi_client = get_wmi_client()  # WMI 客户端对象
+        self.refresh_status_bar_signal.emit()
 
     def refresh_status_bar(self):
         """ Refresh the status bar with UWF status. """
-        status_text = 'UWF 状态: '
         if not is_uwf_installed():
-            status_text += '服务不可用'
+            self.uwf_status_value.setText('Service Not Installed')
+            self.uwf_status_value.setStyleSheet('color: red; font-weight: bold;')
         else:
             uwf_filter_instance = get_service_instance(instance_name='UWF_Filter')[0].as_dict()
             if uwf_filter_instance:
                 if uwf_filter_instance['CurrentEnabled']:
-                    status_text += '已启用'
-                    if not uwf_filter_instance['NextEnabled']:
-                        status_text += ' (重新启动后将禁用)'
-                else:
-                    status_text += '已禁用'
                     if uwf_filter_instance['NextEnabled']:
-                        status_text += ' (重新启动后将启用)'
+                        self.uwf_status_value.setText('Enabled')
+                        self.uwf_status_value.setStyleSheet('color: green; font-weight: bold;')
+                    else:
+                        self.uwf_status_value.setText('Enabled (will be disabled after reboot)')
+                        self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
+                else:
+                    if uwf_filter_instance['NextEnabled']:
+                        self.uwf_status_value.setText('Disabled (will be enabled after reboot)')
+                        self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
+                    else:
+                        self.uwf_status_value.setText('Disabled')
+                        self.uwf_status_value.setStyleSheet('color: red; font-weight: bold;')
             else:
-                status_text += '状态获取失败'
-        self.status_bar.showMessage(status_text)
+                self.uwf_status_value.setText('Could not retrieve status')
+                self.uwf_status_value.setStyleSheet('color: orange; font-weight: bold;')
 
     def _on_page_changed(self, index: int):
         """

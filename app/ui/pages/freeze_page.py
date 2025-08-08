@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QMessageBox, QFileDialog, QHeaderView,
 )
 
-from .base import BasePage
+from ..base import BasePage
 from ..widgets.dialog import WaitDialog
 from ...core.services import is_uwf_installed
 from ...core.services.filter import UWFFilter as UWF_Filter
