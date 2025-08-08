@@ -1,7 +1,7 @@
 import pywintypes
 
 from .base import BaseUWFService
-from .utils import format_com_error, get_service_instance
+from .utils import format_com_error, get_filter_instance
 
 
 class UWFFilter(BaseUWFService):
@@ -19,7 +19,7 @@ class UWFFilter(BaseUWFService):
         """
         try:
             # Get the UWF service class instance
-            instance = get_service_instance(instance_name='UWF_Filter')[0]
+            instance = get_filter_instance()
             if 'NextEnabled' in instance and instance['NextEnabled']:
                 # UWF will be enabled on the next boot
                 return True
@@ -38,8 +38,7 @@ class UWFFilter(BaseUWFService):
         :return: True if the operation was successful, False otherwise.
         """
         try:
-            # Get the UWF service class instance
-            instance = get_service_instance(instance_name='UWF_Filter')[0]
+            instance = get_filter_instance()
             if 'NextEnabled' in instance and not instance['NextEnabled']:
                 # UWF will be disabled on the next boot
                 return True
@@ -58,8 +57,7 @@ class UWFFilter(BaseUWFService):
         :return: True if the operation was successful, False otherwise.
         """
         try:
-            # Get the UWF service class instance
-            instance = get_service_instance(instance_name='UWF_Filter')[0]
+            instance = get_filter_instance()
             result = instance.execute_method("ResetSettings")
             return result.ReturnValue == 0
         except pywintypes.com_error as e:
@@ -73,8 +71,7 @@ class UWFFilter(BaseUWFService):
         :return: True if the operation was successful, False otherwise.
         """
         try:
-            # Get the UWF service class instance
-            instance = get_service_instance(instance_name='UWF_Filter')[0]
+            instance = get_filter_instance()
             result = instance.execute_method("ShutdownSystem")
             return result.ReturnValue == 0
         except pywintypes.com_error as e:
@@ -88,8 +85,7 @@ class UWFFilter(BaseUWFService):
         :return: True if the operation was successful, False otherwise.
         """
         try:
-            # Get the UWF service class instance
-            instance = get_service_instance(instance_name='UWF_Filter')[0]
+            instance = get_filter_instance()
             result = instance.execute_method("RestartSystem")
             return result.ReturnValue == 0
         except pywintypes.com_error as e:
@@ -103,11 +99,12 @@ def current_enabled() -> bool:
     :return: True if the UWF filter is currently enabled, False otherwise.
     """
     try:
-        instance = get_service_instance(instance_name='UWF_Filter')[0]
+        instance = get_filter_instance()
         return instance['CurrentEnabled']
     except pywintypes.com_error as e:
         print(f'[!] Checking current UWF filter status failed: {format_com_error(e=e)}')
     return False
+
 
 def next_enabled() -> bool:
     """
@@ -115,7 +112,7 @@ def next_enabled() -> bool:
     :return: True if the UWF filter will be enabled on the next boot, False otherwise.
     """
     try:
-        instance = get_service_instance(instance_name='UWF_Filter')[0]
+        instance = get_filter_instance()
         return instance['NextEnabled']
     except pywintypes.com_error as e:
         print(f'[!] Checking next UWF filter status failed: {format_com_error(e=e)}')

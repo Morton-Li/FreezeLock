@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QVBoxLayout, QGroupBox, QHBoxLayout, QComboBox, QLabel, QSpinBox, QPushButton
+    QMainWindow, QVBoxLayout, QGroupBox, QHBoxLayout, QComboBox, QLabel, QSpinBox, QPushButton, QMessageBox
 )
 
 from ..base import BasePage
@@ -34,7 +34,7 @@ class SettingsPage(BasePage):
         mode_select_row.addWidget(self.mode_combo)
         mode_select_row.addStretch()  # 添加弹性空间，使内容靠左排列
         mode_row.addLayout(mode_select_row)
-        mode_select_remark = QLabel("选择运行模式，RAM 模式使用内存缓存，Disk 模式使用磁盘缓存。")
+        mode_select_remark = QLabel("RAM 模式使用内存作为缓存，Disk 模式使用磁盘作为缓存。")
         mode_row.addWidget(mode_select_remark)
         run_layout.addLayout(mode_row)
 
@@ -52,8 +52,9 @@ class SettingsPage(BasePage):
         max_cache_input_row.addWidget(self.max_size_spin)
         max_cache_input_row.addStretch()  # 添加弹性空间，使内容靠左排列
         max_cache_row.addLayout(max_cache_input_row)
-        max_cache_remark_i = QLabel('设置最大缓存大小。当覆盖的大小达到缓存值上限时会对任何写入受保护卷的尝试返回错误。')
+        max_cache_remark_i = QLabel('缓存大小，当被保护分区提交修改的数据达到缓存上限时会拒绝后续修改。')
         max_cache_remark_ii = QLabel('注意：系统卷必须具有大于缓存大小的可用空间。')
+        max_cache_remark_ii.setStyleSheet('font-weight: bold;')
         max_cache_row.addWidget(max_cache_remark_i)
         max_cache_row.addWidget(max_cache_remark_ii)
         run_layout.addLayout(max_cache_row)
@@ -91,15 +92,33 @@ class SettingsPage(BasePage):
         """应用设置"""
         print(f"[+] 应用设置")
 
+        all_success = True
+
         mode = self.mode_combo.currentText()
         if mode != get_type():
-            if not self.services['uwf_overlay_config'].set_type(mode):
-                print(f"[!] 设置运行模式失败: {mode}")
+            all_success = self.services['uwf_overlay_config'].set_type(mode)
 
         max_cache = self.max_size_spin.value()
         if max_cache != maximum_size():
-            if not self.services['uwf_overlay_config'].set_maximum_size(max_cache):
-                print(f"[!] 设置最大缓存失败: {max_cache}MB")
+            all_success = self.services['uwf_overlay_config'].set_maximum_size(max_cache)
+
+        msg_box = QMessageBox()
+        msg_box.setMinimumWidth(150)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
+        if all_success:
+            msg_box.setWindowTitle("提示")
+            msg_box.setIcon(QMessageBox.Icon.Information)
+            msg_box.setText("设置已成功应用。")
+            msg_box.setInformativeText("请重启系统以使更改生效。")
+            self.refresh()
+        else:
+            msg_box.setWindowTitle("错误")
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setText("设置应用失败，请检查日志以获取更多信息。")
+            msg_box.setInformativeText("请检查系统日志以获取更多信息。")
+
+        msg_box.exec()
 
     def refresh(self):
         """刷新页面内容"""

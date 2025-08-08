@@ -1,4 +1,5 @@
 import os
+from getpass import getuser
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -10,7 +11,7 @@ from ..base import BasePage
 from ..widgets.dialog import WaitDialog
 from ...core.services import is_uwf_installed
 from ...core.services.filter import UWFFilter as UWF_Filter
-from ...core.services.utils import get_service_instance, get_service_class
+from ...core.services.utils import get_service_instance, get_service_class, get_system_volume
 from ...core.services.volume import UWFVolume as UWF_Volume
 
 
@@ -280,9 +281,35 @@ class FreezePage(BasePage):
         msg_box.setDefaultButton(QMessageBox.StandardButton.Ok)
 
         driver_letter, absolute_path = os.path.splitdrive(path)
+        normpath_absolute_path = os.path.normpath(absolute_path)
+        if normpath_absolute_path == '\\':
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("警告")
+            msg_box.setText("无法添加卷根目录作为排除项")
+            msg_box.exec()
+            return
+
+        # 排除项禁用列表
+        system_volume = get_system_volume()
+        disabled_exclusions = [
+            r'\Windows',
+            r'\EFI\Microsoft\Boot\BOOTSTAT.DAT',
+            r'\Boot\BOOTSTAT.DAT',
+            fr'\Users\{getuser()}\NTUSER.DAT',
+        ]
+        if driver_letter == system_volume and (
+            normpath_absolute_path in disabled_exclusions or any(
+                normpath_absolute_path.startswith(disabled_exclusion_item) for disabled_exclusion_item in disabled_exclusions
+            )
+        ):
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("警告")
+            msg_box.setText("无法添加特殊路径作为排除项")
+            msg_box.exec()
+            return
         print(f'[+] 添加排除项: {path}')
         if self.services['uwf_volume'].add_exclusion(
-            drive=driver_letter, file_name=os.path.normpath(absolute_path)
+            drive=driver_letter, file_name=normpath_absolute_path
         ):
             self.refresh()
             msg_box.setIcon(QMessageBox.Icon.Information)

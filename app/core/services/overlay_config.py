@@ -1,7 +1,7 @@
 import pywintypes
 
 from .base import BaseUWFService
-from .utils import get_service_instance, format_com_error
+from .utils import format_com_error, get_overlay_config_instance
 
 
 class UWFOverlayConfig(BaseUWFService):
@@ -23,8 +23,7 @@ class UWFOverlayConfig(BaseUWFService):
             "Disk": 1,
         }
         try:
-            instance = get_service_instance(instance_name='UWF_OverlayConfig')[0]
-            result = instance.execute_method("SetType", type=type_map[type_str])
+            result = get_overlay_config_instance(current_session=False).execute_method("SetType", type=type_map[type_str])
             return result.ReturnValue == 0
         except pywintypes.com_error as e:
             print(f'[!] Setting UWF overlay type failed: {format_com_error(e=e)}')
@@ -38,24 +37,10 @@ class UWFOverlayConfig(BaseUWFService):
         :return: True if the operation was successful, False otherwise.
         """
         try:
-            instance = get_service_instance(instance_name='UWF_OverlayConfig')[0]
-            result = instance.execute_method("SetMaximumSize", size)
+            result = get_overlay_config_instance(current_session=False).execute_method("SetMaximumSize", size=size)
             return result.ReturnValue == 0
         except pywintypes.com_error as e:
             print(f'[!] Setting UWF overlay maximum size failed: {format_com_error(e=e)}')
-        return False
-
-
-def current_session() -> bool:
-    """
-    Check if the current session is using UWF.
-    :return: True if UWF is enabled in the current session, False otherwise.
-    """
-    try:
-        instance = get_service_instance(instance_name='UWF_OverlayConfig')[0]
-        return instance['CurrentSession']
-    except pywintypes.com_error as e:
-        print(f'[!] Checking UWF current session failed: {format_com_error(e=e)}')
         return False
 
 
@@ -69,7 +54,7 @@ def get_type() -> str:
         1: "Disk",
     }
     try:
-        instance = get_service_instance(instance_name='UWF_OverlayConfig')[0]
+        instance = get_overlay_config_instance(current_session=False)
         type_value = instance['Type']
         return type_map.get(type_value, "Unknown")
     except pywintypes.com_error as e:
@@ -83,7 +68,7 @@ def maximum_size() -> int:
     :return: The maximum size in bytes.
     """
     try:
-        instance = get_service_instance(instance_name='UWF_OverlayConfig')[0]
+        instance = get_overlay_config_instance(current_session=False)
         return instance['MaximumSize']
     except pywintypes.com_error as e:
         print(f'[!] Getting UWF overlay maximum size failed: {format_com_error(e=e)}')
